@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savoria POS & Food Delivery Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            canvas: '#1A1A1A',
+            surface1: '#242424',
+            surface2: '#474747',
+            surface3: '#6B6B6B',
+            surfaceDark: '#1E1E1E',
+            primary: '#E0523C',
+            primaryHover: '#C9422D',
+            amberAccent: '#F5A623',
+            textPrimary: '#F5F5F5',
+            textSecondary: '#D4D4D4',
+            textMuted: '#B8B8B8',
+            borderHairline: '#5E5E5E',
+            statusSuccess: '#34A853',
+            statusWarning: '#E69D24',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: radial-gradient(circle at 85% 20%, #3b1e1c 0%, #141414 55%, #0e0e0e 100%);
+      color: #F5F5F5;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3a3a3a;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    /* Organic Sidebar Active Notch */
+    .sidebar-curved-strip {
+      position: relative;
+      background-color: #6B6B6B;
+      border-top-right-radius: 36px;
+      border-bottom-right-radius: 36px;
+    }
+
+    /* Receipt Ticket-Stub Cutout Notches */
+    .receipt-divider {
+      position: relative;
+      border-top: 2px dashed #6B6B6B;
+    }
+    .receipt-divider::before,
+    .receipt-divider::after {
+      content: '';
+      position: absolute;
+      top: -14px;
+      width: 26px;
+      height: 26px;
+      background-color: #1A1A1A;
+      border-radius: 9999px;
+    }
+    .receipt-divider::before {
+      left: -37px;
+    }
+    .receipt-divider::after {
+      right: -37px;
+    }
+
+    /* 3D Food Pop-out Shadow */
+    .food-popout {
+      filter: drop-shadow(0 14px 16px rgba(0, 0, 0, 0.55));
+      transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .dish-card:hover .food-popout {
+      transform: translateY(-6px) scale(1.05);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-3 sm:p-6 antialiased selection:bg-primary selection:text-white">
+
+  <!-- Main Framed App Shell -->
+  <div class="w-full max-w-[1440px] bg-canvas rounded-[28px] shadow-[0_30px_80px_rgba(0,0,0,0.75)] border border-white/5 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[860px]">
+
+    <!-- ==================== 1. LEFT SIDEBAR (2 cols) ==================== -->
+    <aside class="lg:col-span-2 bg-surface1 flex flex-col justify-between py-7 pr-4 select-none border-b lg:border-b-0 lg:border-r border-white/[0.04]">
+      <div>
+        <!-- Brand Flame 'S' Logo -->
+        <div class="flex items-center justify-center lg:justify-start lg:pl-10 mb-8">
+          <div class="relative w-12 h-12 flex items-center justify-center">
+            <svg viewBox="0 0 64 64" class="w-12 h-12 drop-shadow-[0_4px_12px_rgba(224,82,60,0.45)]">
+              <defs>
+                <linearGradient id="flameGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#F5A623" />
+                  <stop offset="55%" stop-color="#E0523C" />
+                  <stop offset="100%" stop-color="#B91C1C" />
+                </linearGradient>
+              </defs>
+              <path fill="url(#flameGrad)" d="M35.5 6C37 14 29 18 29 25c0 4 3 6.5 7 6.5 5.5 0 11 4 11 11.5 0 8.5-7.5 15-16.5 15-8.5 0-14.5-5.5-14.5-13 0-3.5 1.8-6.5 4.5-8-.5 3.5 1.8 6.5 5.5 6.5 3.5 0 6-2.2 6-5.2 0-3.5-3.2-5-7.5-7C19 28.5 15 24 15 17.5 15 10.5 22 5 30.5 5c1.8 0 3.5.3 5 1z"/>
+              <circle cx="23" cy="14" r="2" fill="#FDE047"/>
+              <circle cx="42" cy="21" r="1.8" fill="#F97316"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Navigation Menu with Organic Curved Strip -->
+        <nav class="relative flex flex-row lg:flex-col overflow-x-auto lg:overflow-visible gap-1 lg:gap-0 px-4 lg:px-0">
+          <!-- Organic grey strip on desktop left -->
+          <div class="hidden lg:block sidebar-curved-strip w-[62px] py-4 flex flex-col items-center">
+            <div class="h-12 flex items-center justify-center">
+              <button onclick="setActiveNav(this, 'Dashboard')" class="nav-btn-icon w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/30 transition">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+              </button>
+            </div>
+            <div class="h-14 flex items-center justify-center">
+              <button onclick="setActiveNav(this, 'Orders')" class="nav-btn-icon w-9 h-9 rounded-xl text-white/90 hover:text-white flex items-center justify-center transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+              </button>
+            </div>
+            <div class="h-14 flex items-center justify-center">
+              <button onclick="setActiveNav(this, 'Restaurants')" class="nav-btn-icon w-9 h-9 rounded-xl text-white/90 hover:text-white flex items-center justify-center transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 21s-6-5.686-6-10a6 6 0 1112 0c0 4.314-6 10-6 10z"/><circle cx="12" cy="11" r="2.5"/></svg>
+              </button>
+            </div>
+            <div class="h-14 flex items-center justify-center">
+              <button onclick="setActiveNav(this, 'Finance')" class="nav-btn-icon w-9 h-9 rounded-xl text-white/90 hover:text-white flex items-center justify-center transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
+              </button>
+            </div>
+            <div class="h-14 flex items-center justify-center">
+              <button onclick="setActiveNav(this, 'Logout')" class="nav-btn-icon w-9 h-9 rounded-xl text-white/90 hover:text-white flex items-center justify-center transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Labels Column (Desktop) / Pills (Mobile) -->
+          <div class="lg:absolute lg:left-[62px] lg:top-4 flex flex-row lg:flex-col w-full lg:w-[calc(100%-62px)] gap-2 lg:gap-0">
+            <button data-nav="Dashboard" onclick="selectNavLabel('Dashboard')" class="nav-label h-10 lg:h-12 px-3 lg:pl-4 flex items-center gap-2 text-xs font-semibold text-primary transition whitespace-nowrap">
+              <span class="hidden lg:inline-block w-1.5 h-1.5 rounded-full bg-primary nav-dot"></span>
+              Dashboard
+            </button>
+            <button data-nav="Orders" onclick="selectNavLabel('Orders')" class="nav-label h-10 lg:h-14 px-3 lg:pl-4 flex items-center gap-2 text-xs font-medium text-textMuted hover:text-textPrimary transition whitespace-nowrap">
+              <span class="hidden lg:inline-block w-1.5 h-1.5 rounded-full bg-transparent nav-dot"></span>
+              Orders
+            </button>
+            <button data-nav="Restaurants" onclick="selectNavLabel('Restaurants')" class="nav-label h-10 lg:h-14 px-3 lg:pl-4 flex items-center gap-2 text-xs font-medium text-textMuted hover:text-textPrimary transition whitespace-nowrap">
+              <span class="hidden lg:inline-block w-1.5 h-1.5 rounded-full bg-transparent nav-dot"></span>
+              Restaurants
+            </button>
+            <button data-nav="Finance" onclick="selectNavLabel('Finance')" class="nav-label h-10 lg:h-14 px-3 lg:pl-4 flex items-center gap-2 text-xs font-medium text-textMuted hover:text-textPrimary transition whitespace-nowrap">
+              <span class="hidden lg:inline-block w-1.5 h-1.5 rounded-full bg-transparent nav-dot"></span>
+              Finance
+            </button>
+            <button data-nav="Logout" onclick="selectNavLabel('Logout')" class="nav-label h-10 lg:h-14 px-3 lg:pl-4 flex items-center gap-2 text-xs font-medium text-textMuted hover:text-textPrimary transition whitespace-nowrap">
+              <span class="hidden lg:inline-block w-1.5 h-1.5 rounded-full bg-transparent nav-dot"></span>
+              Logout
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      <!-- Bottom Quick Utility Buttons -->
+      <div class="hidden lg:flex items-center justify-center gap-3 pl-4 pt-6">
+        <button aria-label="Settings" class="w-9 h-9 rounded-full bg-[#3A2B29] hover:bg-primary/30 text-textPrimary flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-primary">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+        </button>
+        <button aria-label="Notifications" class="relative w-9 h-9 rounded-full bg-[#3A2B29] hover:bg-primary/30 text-textPrimary flex items-center justify-center transition focus:outline-none focus:ring-2 focus:ring-primary">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg>
+          <span class="absolute top-2 right-2.5 w-1.5 h-1.5 rounded-full bg-primary"></span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================== 2. CENTER MAIN WORKSPACE (6 cols) ==================== -->
+    <main class="lg:col-span-6 p-6 lg:px-7 lg:py-7 flex flex-col gap-6 overflow-hidden">
+
+      <!-- Search Bar -->
+      <div class="relative flex items-center">
+        <input
+          id="searchInput"
+          type="text"
+          oninput="filterDishes(this.value)"
+          placeholder="Search Restaurant, Food, Cuisine or a Dish"
+          class="w-full h-11 pl-5 pr-12 rounded-full bg-surface1 border border-white/[0.08] text-xs text-textPrimary placeholder:text-textMuted focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition"
+        />
+        <button aria-label="Search" class="absolute right-1.5 w-8 h-8 rounded-full bg-surface3 hover:bg-primary text-textPrimary flex items-center justify-center transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        </button>
+      </div>
+
+      <!-- Categories Section -->
+      <section>
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <h2 class="text-[17px] font-bold text-textPrimary leading-tight">Categories</h2>
+            <p class="text-[11px] text-textMuted mt-0.5"><span class="text-primary font-semibold">10+ New</span> Categories added this week</p>
+          </div>
+          <button class="flex items-center gap-2 text-[11px] font-medium text-textSecondary hover:text-textPrimary transition group">
+            View More
+            <span class="w-6 h-6 rounded-full bg-surface2 group-hover:bg-primary text-textPrimary flex items-center justify-center transition">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </span>
+          </button>
+        </div>
+
+        <!-- 7 Circular Category Avatars -->
+        <div id="categoryList" class="flex items-center justify-between gap-2.5 overflow-x-auto pb-1">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Popular Dishes Section -->
+      <section>
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <h2 class="text-[17px] font-bold text-textPrimary leading-tight">Popular Dishes</h2>
+            <p class="text-[11px] text-textMuted mt-0.5"><span class="text-primary font-semibold">20+ New</span> dishes added this week</p>
+          </div>
+          <button class="flex items-center gap-2 text-[11px] font-medium text-textSecondary hover:text-textPrimary transition group">
+            View More
+            <span class="w-6 h-6 rounded-full bg-surface2 group-hover:bg-primary text-textPrimary flex items-center justify-center transition">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </span>
+          </button>
+        </div>
+
+        <!-- Pop-Out 3D Food Cards Carousel -->
+        <div id="dishesGrid" class="flex gap-4 overflow-x-auto pt-10 pb-2 -mx-1 px-1">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- Order Reports Section -->
+      <section class="flex-1 flex flex-col">
+        <div class="flex items-start justify-between mb-3.5">
+          <div>
+            <h2 class="text-[17px] font-bold text-textPrimary leading-tight">Order Reports</h2>
+            <p class="text-[11px] text-textMuted mt-0.5"><span class="text-primary font-semibold">Wow!! 100+ New</span> order got this week</p>
+          </div>
+          <button class="flex items-center gap-2 text-[11px] font-medium text-textSecondary hover:text-textPrimary transition group">
+            View More
+            <span class="w-6 h-6 rounded-full bg-surface2 group-hover:bg-primary text-textPrimary flex items-center justify-center transition">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </span>
+          </button>
+        </div>
+
+        <!-- Pill Header Table -->
+        <div class="overflow-x-auto">
+          <div class="min-w-[500px]">
+            <!-- Table Pill Header -->
+            <div class="grid grid-cols-12 items-center bg-surface2 rounded-full px-4 py-2 text-[11px] font-semibold text-textPrimary mb-2">
+              <div class="col-span-3">Customer</div>
+              <div class="col-span-3 text-center">Order number</div>
+              <div class="col-span-3 text-center">Address</div>
+              <div class="col-span-1 text-center">Amount</div>
+              <div class="col-span-2 text-right pr-2">Status</div>
+            </div>
+
+            <!-- Table Rows -->
+            <div class="divide-y divide-white/[0.05] text-[11px]">
+              <div class="grid grid-cols-12 items-center px-3 py-2.5 hover:bg-surface1/60 rounded-xl transition">
+                <div class="col-span-3 flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-full bg-amber-400 text-canvas font-bold flex items-center justify-center text-[11px] shrink-0">JJ</div>
+                  <span class="font-medium text-textPrimary truncate">Jamsed Jhon</span>
+                </div>
+                <div class="col-span-3 text-center text-textSecondary tabular-nums">01845723200573</div>
+                <div class="col-span-3 text-center text-textSecondary truncate">Korang Teagha Hills</div>
+                <div class="col-span-1 text-center font-semibold text-textPrimary tabular-nums">$120.45</div>
+                <div class="col-span-2 flex justify-end">
+                  <span class="px-3 py-1 rounded-full bg-statusSuccess text-white font-semibold text-[10px] shadow-sm">Completed</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-12 items-center px-3 py-2.5 hover:bg-surface1/60 rounded-xl transition">
+                <div class="col-span-3 flex items-center gap-2.5">
+                  <div class="w-7 h-7 rounded-full bg-sky-500 text-white font-bold flex items-center justify-center text-[11px] shrink-0">PP</div>
+                  <span class="font-medium text-textPrimary truncate">Peter Parker</span>
+                </div>
+                <div class="col-span-3 text-center text-textSecondary tabular-nums">01976854823047</div>
+                <div class="col-span-3 text-center text-textSecondary truncate">City Center, CA</div>
+                <div class="col-span-1 text-center font-semibold text-textPrimary tabular-nums">$140.45</div>
+                <div class="col-span-2 flex justify-end">
+                  <span class="px-3.5 py-1 rounded-full bg-statusWarning text-canvas font-bold text-[10px] shadow-sm">Pending</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ==================== 3. RIGHT CART / RECEIPT PANEL (4 cols) ==================== -->
+    <aside class="lg:col-span-4 p-5 lg:p-6 flex items-stretch">
+      <div class="w-full bg-surface2 rounded-[24px] p-5 flex flex-col justify-between shadow-inner border border-white/[0.06] overflow-hidden">
+        
+        <div>
+          <!-- Delivery Address Elevated Card (Surface 3) -->
+          <div class="bg-surface3 rounded-[16px] p-4 mb-5 shadow-sm">
+            <div class="text-[11px] font-bold tracking-wider uppercase text-textPrimary mb-2">DELIVERY ADDRESS</div>
+            <div class="flex items-center gap-2 text-xs text-textPrimary mb-1.5">
+              <svg class="w-3.5 h-3.5 text-textPrimary shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+              <span class="truncate">Po. 1478, Street No. 52, West New York</span>
+            </div>
+            <div class="flex items-center gap-2 text-[11px] text-textSecondary">
+              <svg class="w-3.5 h-3.5 text-textPrimary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              <span>20 min</span>
+            </div>
+          </div>
+
+          <!-- Cart Header & Order ID -->
+          <div class="flex items-center justify-between mb-3.5 px-0.5">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-textPrimary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+              <span class="text-sm font-bold text-textPrimary">Cart</span>
+            </div>
+            <span class="text-[11px] text-textSecondary font-medium tabular-nums">Order ID: #1099</span>
+          </div>
+
+          <!-- 3-Option Segmented Pill Control -->
+          <div class="grid grid-cols-3 items-center p-1 rounded-full border border-borderHairline bg-surface2/80 mb-5 text-[11px] font-semibold">
+            <button onclick="setOrderMode(this, 'Delivery')" class="mode-tab py-1.5 rounded-full bg-primary text-white shadow transition">Delivery</button>
+            <button onclick="setOrderMode(this, 'Dine In')" class="mode-tab py-1.5 rounded-full text-textSecondary hover:text-textPrimary transition border-r border-borderHairline/60">Dine In</button>
+            <button onclick="setOrderMode(this, 'Takeaway')" class="mode-tab py-1.5 rounded-full text-textSecondary hover:text-textPrimary transition">Takeaway</button>
+          </div>
+
+          <!-- Cart Line Items -->
+          <div id="cartItemsContainer" class="space-y-4 max-h-[220px] overflow-y-auto pr-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Bottom Receipt Section with Ticket Cutout -->
+        <div class="mt-5">
+          <!-- Ticket-Stub Cutout Divider -->
+          <div class="receipt-divider my-5"></div>
+
+          <!-- Promotion Code Box -->
+          <div class="flex items-center justify-between bg-[#545454] rounded-full p-1.5 pl-4 mb-5 border border-white/[0.06]">
+            <span class="text-[11px] font-medium text-textPrimary">Promotion Code</span>
+            <input
+              id="promoInput"
+              type="text"
+              value="TRYNEW"
+              onchange="renderCart()"
+              class="w-28 py-1.5 px-3 rounded-full bg-surfaceDark text-textPrimary text-[11px] font-bold tracking-wider text-center uppercase focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <!-- Totals Breakdown -->
+          <div class="space-y-2 text-xs px-1 mb-5">
+            <div class="flex items-center justify-between text-textSecondary">
+              <span>Sub Total</span>
+              <span id="subTotalText" class="font-semibold text-textPrimary tabular-nums">$155.20</span>
+            </div>
+            <div class="flex items-center justify-between text-textSecondary">
+              <span id="chargeLabel">Delivery Charge</span>
+              <span id="deliveryChargeText" class="font-semibold text-textPrimary tabular-nums">$10</span>
+            </div>
+            <div class="flex items-center justify-between pt-2 text-[15px] font-bold text-textPrimary">
+              <span>TOTAL</span>
+              <span id="grandTotalText" class="tabular-nums">$165.20</span>
+            </div>
+          </div>
+
+          <!-- Dark Inverted Full-Pill CTA -->
+          <button
+            onclick="confirmOrder()"
+            id="confirmBtn"
+            class="w-full h-12 rounded-full bg-surfaceDark hover:bg-black text-textPrimary font-bold text-xs tracking-wide shadow-lg transition transform active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            Confirm Order
+          </button>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-surface1 border border-primary/50 text-textPrimary px-5 py-3 rounded-full shadow-2xl text-xs font-semibold flex items-center gap-2.5 translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50">
+    <span class="w-2.5 h-2.5 rounded-full bg-statusSuccess animate-pulse"></span>
+    <span id="toastMsg">Order #1099 Confirmed!</span>
+  </div>
+
+  <script>
+    const categories = [
+      { name: 'Burger', emoji: '🍔', bg: 'from-amber-500/30 to-orange-700/30' },
+      { name: 'Pizza', emoji: '🍕', bg: 'from-red-500/30 to-amber-600/30' },
+      { name: 'Fries', emoji: '🍟', bg: 'from-yellow-400/30 to-amber-700/30' },
+      { name: 'Curry', emoji: '🍛', bg: 'from-orange-500/30 to-red-800/30' },
+      { name: 'Sandwich', emoji: '🥪', bg: 'from-emerald-500/25 to-amber-600/30' },
+      { name: 'Dessert', emoji: '🍦', bg: 'from-pink-500/30 to-purple-700/30' },
+      { name: 'Cake', emoji: '🍰', bg: 'from-rose-400/30 to-amber-600/30' },
+    ];
+
+    const dishes = [
+      { id: 1, name: 'Hamburger', subtitle: 'Whole wheat bun', price: 10.00, rating: 4.5, sales: 1350, emoji: '🍔', category: 'Burger' },
+      { id: 2, name: 'Pizza', subtitle: 'Thin Crust', price: 25.00, rating: 4.1, sales: 1100, emoji: '🍕', category: 'Pizza' },
+      { id: 3, name: 'Sushi', subtitle: 'Fresh Salmon', price: 15.00, rating: 4.1, sales: 1100, emoji: '🍣', category: 'Curry' },
+      { id: 4, name: 'Noodles', subtitle: 'Spicy Ramen', price: 18.00, rating: 4.6, sales: 980, emoji: '🍜', category: 'Curry' },
+    ];
+
+    let cart = [
+      { id: 2, name: 'Pepperoni Pizza', note: 'Thin Crust', price: 52.60, qty: 2, emoji: '🍕' },
+      { id: 1, name: 'Cheese Burger', note: 'Whole wheat bun', price: 25.00, qty: 2, emoji: '🍔' },
+    ];
+
+    let selectedCategory = null;
+    let orderMode = 'Delivery';
+
+    function renderCategories() {
+      const container = document.getElementById('categoryList');
+      container.innerHTML = categories.map(cat => {
+        const active = selectedCategory === cat.name;
+        return `
+          <button
+            onclick="toggleCategory('${cat.name}')"
+            title="${cat.name}"
+            class="w-12 h-12 rounded-full bg-gradient-to-br ${cat.bg} border ${active ? 'border-primary ring-2 ring-primary/40 scale-105' : 'border-white/10 hover:border-white/30'} flex items-center justify-center text-2xl shrink-0 transition transform"
+          >
+            <span class="drop-shadow">${cat.emoji}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleCategory(catName) {
+      selectedCategory = selectedCategory === catName ? null : catName;
+      renderCategories();
+      filterDishes(document.getElementById('searchInput').value);
+    }
+
+    function renderDishes(list) {
+      const grid = document.getElementById('dishesGrid');
+      if (!list.length) {
+        grid.innerHTML = `<div class="text-xs text-textMuted py-8 px-4">No dishes matched your filter.</div>`;
+        return;
+      }
+      grid.innerHTML = list.map(dish => `
+        <div
+          onclick="addToCart(${dish.id})"
+          class="dish-card relative min-w-[156px] w-[156px] bg-surface1 hover:bg-[#2B2B2B] rounded-[18px] pt-11 pb-3.5 px-3.5 text-center border border-white/[0.05] hover:border-primary/40 cursor-pointer transition shrink-0 group"
+        >
+          <!-- Pop-out 3D Food Thumbnail -->
+          <div class="food-popout absolute -top-9 left-1/2 -translate-x-1/2 w-20 h-20 flex items-center justify-center text-[60px] select-none pointer-events-none">
+            ${dish.emoji}
+          </div>
+
+          <h3 class="text-sm font-bold text-textPrimary truncate">${dish.name}</h3>
+          <p class="text-[10px] text-textMuted mt-0.5">Starting From</p>
+          <div class="text-xs font-extrabold text-textPrimary mt-0.5 tabular-nums">$ ${dish.price.toFixed(2)}</div>
+
+          <div class="flex items-center justify-between mt-3 pt-2 border-t border-white/[0.06] text-[10px]">
+            <div class="flex items-center gap-1 font-bold text-textPrimary">
+              <span class="text-amberAccent">★</span>
+              <span>${dish.rating.toFixed(1)}</span>
+            </div>
+            <div class="text-right leading-tight">
+              <div class="text-textMuted text-[9px] tabular-nums">${dish.sales}</div>
+              <div class="text-textSecondary font-semibold text-[9px]">Total Sale</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterDishes(query) {
+      const q = query.toLowerCase().trim();
+      const filtered = dishes.filter(d => {
+        const matchText = !q || d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q);
+        const matchCat = !selectedCategory || d.category === selectedCategory;
+        return matchText && matchCat;
+      });
+      renderDishes(filtered);
+    }
+
+    function addToCart(dishId) {
+      const dish = dishes.find(d => d.id === dishId);
+      if (!dish) return;
+      const existing = cart.find(c => c.id === dishId);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({
+          id: dish.id,
+          name: dish.name,
+          note: dish.subtitle,
+          price: dish.price,
+          qty: 1,
+          emoji: dish.emoji
+        });
+      }
+      renderCart();
+      showToast(`Added ${dish.name} to Cart`);
+    }
+
+    function updateQty(index, delta) {
+      cart[index].qty += delta;
+      if (cart[index].qty <= 0) {
+        cart.splice(index, 1);
+      }
+      renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItemsContainer');
+      if (!cart.length) {
+        container.innerHTML = `<div class="text-center text-xs text-textSecondary py-6">Your cart is empty. Click any dish to add!</div>`;
+      } else {
+        container.innerHTML = cart.map((item, idx) => `
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-full bg-surface3/60 flex items-center justify-center text-2xl shrink-0 shadow">
+                ${item.emoji}
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-textPrimary truncate">${item.name}</div>
+                <div class="text-[10px] text-textSecondary truncate">${item.note}</div>
+                <div class="flex items-center gap-2.5 mt-1.5">
+                  <button onclick="updateQty(${idx}, -1)" aria-label="Decrease quantity" class="w-4 h-4 rounded-full border border-textSecondary text-textPrimary flex items-center justify-center text-[11px] leading-none hover:bg-primary hover:border-primary transition">-</button>
+                  <span class="text-[11px] font-bold text-textPrimary tabular-nums">${item.qty}</span>
+                  <button onclick="updateQty(${idx}, 1)" aria-label="Increase quantity" class="w-4 h-4 rounded-full border border-textSecondary text-textPrimary flex items-center justify-center text-[11px] leading-none hover:bg-primary hover:border-primary transition">+</button>
+                </div>
+              </div>
+            </div>
+            <button aria-label="Edit item" onclick="showToast('Editing note for ${item.name}')" class="w-10 h-7 rounded-full bg-white hover:bg-neutral-200 text-canvas flex items-center justify-center shadow shrink-0 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          </div>
+        `).join('');
+      }
+
+      const subTotal = cart.reduce((acc, item) => acc + item.price * item.qty, 0);
+      const deliveryCharge = (orderMode === 'Delivery' && cart.length > 0) ? 10 : 0;
+      const grandTotal = subTotal + deliveryCharge;
+
+      document.getElementById('subTotalText').textContent = `$${subTotal.toFixed(2)}`;
+      document.getElementById('chargeLabel').textContent = orderMode === 'Delivery' ? 'Delivery Charge' : `${orderMode} Fee`;
+      document.getElementById('deliveryChargeText').textContent = `$${deliveryCharge}`;
+      document.getElementById('grandTotalText').textContent = `$${grandTotal.toFixed(2)}`;
+    }
+
+    function setOrderMode(btn, mode) {
+      orderMode = mode;
+      document.querySelectorAll('.mode-tab').forEach(el => {
+        el.classList.remove('bg-primary', 'text-white', 'shadow');
+        el.classList.add('text-textSecondary');
+      });
+      btn.classList.add('bg-primary', 'text-white', 'shadow');
+      btn.classList.remove('text-textSecondary');
+      renderCart();
+    }
+
+    function selectNavLabel(name) {
+      document.querySelectorAll('.nav-label').forEach(el => {
+        const isTarget = el.dataset.nav === name;
+        el.classList.toggle('text-primary', isTarget);
+        el.classList.toggle('font-semibold', isTarget);
+        el.classList.toggle('text-textMuted', !isTarget);
+        const dot = el.querySelector('.nav-dot');
+        if (dot) {
+          dot.classList.toggle('bg-primary', isTarget);
+          dot.classList.toggle('bg-transparent', !isTarget);
+        }
+      });
+    }
+
+    function setActiveNav(btn, name) {
+      document.querySelectorAll('.nav-btn-icon').forEach(el => {
+        el.classList.remove('bg-primary', 'text-white', 'shadow-md', 'shadow-primary/30');
+        el.classList.add('text-white/90');
+      });
+      btn.classList.add('bg-primary', 'text-white', 'shadow-md', 'shadow-primary/30');
+      selectNavLabel(name);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2400);
+    }
+
+    function confirmOrder() {
+      if (!cart.length) {
+        showToast('Please add at least 1 dish first!');
+        return;
+      }
+      showToast(`Order #1099 (${orderMode}) Confirmed!`);
+    }
+
+    // Initial render
+    renderCategories();
+    renderDishes(dishes);
+    renderCart();
+  </script>
+</body>
+</html>

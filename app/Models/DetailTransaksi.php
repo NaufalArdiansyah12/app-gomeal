@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class DetailTransaksi extends Model
+{
+    protected $table = 'tbl_detail_transaksi';
+
+    protected $primaryKey = 'id_detail';
+
+    public $timestamps = false;
+
+    protected $fillable = [
+        'id_transaksi',
+        'nama_produk',
+        'jumlah',
+        'harga',
+    ];
+
+    protected $casts = [
+        'jumlah' => 'integer',
+        'harga' => 'decimal:2',
+    ];
+
+    public function transaksi(): BelongsTo
+    {
+        return $this->belongsTo(Transaksi::class, 'id_transaksi', 'id_transaksi');
+    }
+}
