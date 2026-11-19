@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChefController;
+use App\Http\Controllers\DuitkuController;
 use App\Http\Controllers\GoMealController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureAdminOrKasir;
@@ -15,6 +16,11 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Duitku Payment Gateway Routes
+Route::post('/api/duitku/callback', [DuitkuController::class, 'callback'])->name('duitku.api.callback');
+Route::post('/duitku/callback', [DuitkuController::class, 'callback'])->name('duitku.callback');
+Route::get('/duitku/return', [DuitkuController::class, 'returnPage'])->name('duitku.return');
 
 // Pelanggan Routes (Pelanggan Panel: Dashboard, Delivery, Dine In, Order History, Pembayaran)
 Route::middleware(EnsurePelangganLoggedIn::class)->group(function () {

@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
 import {
     QrCode, Camera, CheckCircle2, RefreshCw, Search, Star,
-    Plus, Minus, ShoppingBag, Trash2, StickyNote, Wallet, Banknote,
+    Plus, Minus, ShoppingBag, Trash2, StickyNote, Landmark,
     Users, AlertCircle, ArrowRight,
 } from 'lucide-react';
 import PelangganLayout, { money } from './PelangganLayout';
@@ -25,7 +25,7 @@ export default function FoodOrderDineIn({
     const [search, setSearch] = useState('');
     const [cart, setCart] = useState([]);
     const [notes, setNotes] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('gomeal_pay');
+    const [paymentMethod, setPaymentMethod] = useState('qris');
     const [processing, setProcessing] = useState(false);
     const [cartOpen, setCartOpen] = useState(false);
 
@@ -507,28 +507,31 @@ export default function FoodOrderDineIn({
                             <p className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-soft">
                                 Pembayaran
                             </p>
-                            <div className="mt-1 grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setPaymentMethod('gomeal_pay')}
-                                    className={`rounded-xl border p-2 text-center text-[11px] font-bold ${
-                                        paymentMethod === 'gomeal_pay'
-                                            ? 'border-primary bg-primary-subtle text-ink'
-                                            : 'border-line bg-white text-ink-soft'
-                                    }`}
-                                >
-                                    GoMeal Pay ({money(walletBalance)})
+                            <div className="mt-1 grid grid-cols-3 gap-1.5">
+                                <button type="button" onClick={() => setPaymentMethod('qris')} className={`flex flex-col items-center gap-1 rounded-xl border p-2 text-center text-[10.5px] font-bold ${paymentMethod === 'qris' ? 'border-primary bg-primary-subtle text-ink' : 'border-line bg-white text-ink-soft'}`}>
+                                    <QrCode className="h-4 w-4" />QRIS
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setPaymentMethod('tunai')}
-                                    className={`rounded-xl border p-2 text-center text-[11px] font-bold ${
-                                        paymentMethod === 'tunai'
+                                    onClick={() => setPaymentMethod('bca')}
+                                    className={`rounded-xl border p-2 text-center text-[10.5px] font-bold ${
+                                        paymentMethod === 'bca'
                                             ? 'border-primary bg-primary-subtle text-ink'
                                             : 'border-line bg-white text-ink-soft'
                                     }`}
                                 >
-                                    Bayar di Kasir
+                                    <><Landmark className="mx-auto mb-1 h-4 w-4" />VA BCA</>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentMethod('bri')}
+                                    className={`rounded-xl border p-2 text-center text-[10.5px] font-bold ${
+                                        paymentMethod === 'bri'
+                                            ? 'border-primary bg-primary-subtle text-ink'
+                                            : 'border-line bg-white text-ink-soft'
+                                    }`}
+                                >
+                                    <><Landmark className="mx-auto mb-1 h-4 w-4" />VA BRI</>
                                 </button>
                             </div>
                         </div>

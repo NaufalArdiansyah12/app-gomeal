@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Pelanggan;
 use App\Models\Produk;
 use App\Models\User;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -141,6 +142,9 @@ class DeliveryOrderFlowTest extends TestCase
 
     public function test_kasir_pos_transaction_does_not_appear_in_order_makanan(): void
     {
+        Config::set('duitku.merchant_code', 'TEST_MERCHANT');
+        Config::set('duitku.api_key', 'TEST_SECRET_KEY');
+
         $kasir = User::firstOrCreate(
             ['username' => 'kasir_pos_filter_test'],
             ['password' => bcrypt('password'), 'role' => 'kasir']
@@ -187,7 +191,43 @@ class DeliveryOrderFlowTest extends TestCase
         $orderIds = array_column($ordersProp, 'id_transaksi');
         $this->assertNotContains($posTx->id_transaksi, $orderIds);
 
+        // Successful POS Duitku callbacks must not send POS orders into the kitchen order list.
+        $posDuitkuId = DB::table('tbl_transaksi')->insertGetId([
+            'tanggal' => now()->toDateString(),
+            'id_pelanggan' => $pelanggan->id_pelanggan,
+            'id_user' => $kasir->id_user,
+            'total_belanja' => 20000,
+            'status_pesanan' => 'selesai',
+            'tipe_pesanan' => 'kasir_pos',
+            'metode_pembayaran' => 'duitku',
+            'payment_status' => 'pending',
+        ]);
+
+        $orderId = "GM-{$posDuitkuId}-".time();
+        $amount = '20000';
+        $signature = hash_hmac('sha256', 'TEST_MERCHANT'.$amount.$orderId, 'TEST_SECRET_KEY');
+
+        $this->postJson('/api/duitku/callback', [
+            'merchantCode' => 'TEST_MERCHANT',
+            'amount' => $amount,
+            'merchantOrderId' => $orderId,
+            'signature' => $signature,
+            'resultCode' => '00',
+            'reference' => 'POS-FLOW-REF',
+        ])->assertOk();
+
+        $orderMakananPage = $this->withSession([
+            'user_id' => $kasir->id_user,
+            'user_role' => 'kasir',
+            'user_username' => $kasir->username,
+        ])->get('/admin/order-makanan');
+
+        $ordersProp = $orderMakananPage->viewData('page')['props']['orders'] ?? [];
+        $orderIds = array_column($ordersProp, 'id_transaksi');
+        $this->assertNotContains($posDuitkuId, $orderIds);
+
         // Cleanup
+        DB::table('tbl_transaksi')->where('id_transaksi', $posDuitkuId)->delete();
         DB::table('tbl_detail_transaksi')->where('id_transaksi', $posTx->id_transaksi)->delete();
         DB::table('tbl_transaksi')->where('id_transaksi', $posTx->id_transaksi)->delete();
     }

@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    @if(str_contains(request()->getHost(), 'ngrok') || request()->isSecure())
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    @endif
     <title>GoMeal. — Order In, Eat Well</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">

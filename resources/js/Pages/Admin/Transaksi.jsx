@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import {
     Plus, Minus, Trash2, Search, Printer, CheckCircle2,
-    CreditCard, Banknote, QrCode, ArrowRight, X, Check,
+    CreditCard, Banknote, QrCode, ArrowRight, X, Check, Landmark,
     ShoppingCart, Receipt, UserRound, BadgePercent, UtensilsCrossed,
 } from 'lucide-react';
 
@@ -469,7 +469,7 @@ export default function TransaksiPage({ products = [], pelangganList = [], recen
                                         type="button"
                                         disabled={isDisabled}
                                         onClick={() => addToCart(p)}
-                                        className={`group relative flex min-h-[132px] select-none flex-col justify-between rounded-[20px] border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                                        className={`group relative flex min-h-[230px] select-none flex-col justify-between overflow-hidden rounded-[20px] border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                                             inCartQty > 0
                                                 ? 'border-primary bg-primary-subtle/50'
                                                 : 'border-line bg-white'
@@ -484,6 +484,14 @@ export default function TransaksiPage({ products = [], pelangganList = [], recen
                                                 {inCartQty}
                                             </span>
                                         )}
+
+                                        <div className="mb-3 aspect-[4/3] w-full overflow-hidden rounded-[14px] bg-muted">
+                                            {p.image ? (
+                                                <img src={p.image} alt={p.nama_produk} loading="lazy" className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.03]" onError={(event) => { event.currentTarget.hidden = true; }} />
+                                            ) : (
+                                                <div className="grid h-full place-items-center text-ink-soft"><UtensilsCrossed className="h-8 w-8" /></div>
+                                            )}
+                                        </div>
 
                                         <div>
                                             <div className="flex items-center justify-between gap-1.5">
@@ -834,11 +842,12 @@ export default function TransaksiPage({ products = [], pelangganList = [], recen
                             {/* Metode */}
                             <div>
                                 <p className="mb-1.5 text-[12px] font-semibold text-ink-soft">Metode pembayaran</p>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {[
-                                        { id: 'Tunai', label: 'Tunai', icon: Banknote },
+                                        { id: 'Tunai', label: 'Tunai (Cash)', icon: Banknote },
                                         { id: 'QRIS', label: 'QRIS', icon: QrCode },
-                                        { id: 'Kartu', label: 'Kartu', icon: CreditCard },
+                                        { id: 'BCA', label: 'VA BCA', icon: Landmark },
+                                        { id: 'BRI', label: 'VA BRI', icon: Landmark },
                                     ].map(({ id, label, icon: Icon }) => (
                                         <button
                                             key={id}
@@ -907,8 +916,11 @@ export default function TransaksiPage({ products = [], pelangganList = [], recen
                                     </div>
                                 </div>
                             ) : (
-                                <div className="rounded-xl border border-line bg-muted/30 p-4 text-center text-[13px] text-ink-soft">
-                                    Pembayaran <span className="font-bold text-ink">{metodePembayaran}</span> dicatat lunas sesuai total tagihan.
+                                <div className="rounded-xl border border-primary/20 bg-primary-subtle/50 p-4 text-[12.5px] text-ink-soft">
+                                    <p className="font-semibold text-primary-deep">Redirect ke Duitku Payment Gateway</p>
+                                    <p className="mt-1 text-ink-soft">
+                                        Anda akan diarahkan ke halaman Duitku untuk membayar dengan {metodePembayaran === 'BCA' ? 'Virtual Account BCA' : metodePembayaran === 'BRI' ? 'Virtual Account BRI' : 'QRIS'}.
+                                    </p>
                                 </div>
                             )}
 
@@ -927,7 +939,11 @@ export default function TransaksiPage({ products = [], pelangganList = [], recen
                                     onClick={handleConfirmPayment}
                                     className="flex-[1.4] rounded-full bg-primary py-3 text-[13px] font-bold text-ink transition hover:bg-primary-hover active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {loading ? 'Memproses...' : 'Selesaikan Transaksi'}
+                                    {loading
+                                        ? 'Memproses...'
+                                        : metodePembayaran !== 'Tunai'
+                                          ? 'Bayar via Duitku'
+                                          : 'Selesaikan Transaksi'}
                                 </button>
                             </div>
                         </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Meja;
 use App\Models\Pelanggan;
 use App\Models\Produk;
+use App\Services\DuitkuService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -610,7 +611,7 @@ class GoMealController extends Controller
     /**
      * Atomic Checkout execution using TCL (START TRANSACTION, COMMIT, ROLLBACK).
      */
-    public function checkout(Request $request): RedirectResponse
+    public function checkout(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $validated = $request->validate([
             'items' => 'required|array|min:1',
@@ -618,7 +619,7 @@ class GoMealController extends Controller
             'items.*.qty' => 'required|integer|min:1',
             'order_type' => 'nullable|in:delivery,dine_in',
             'id_meja' => 'nullable|integer|exists:tbl_meja,id_meja',
-            'payment_method' => 'nullable|in:gomeal_pay,qris,tunai',
+            'payment_method' => 'nullable|in:gomeal_pay,qris,tunai,cod,duitku,bca,bri',
             'coupon_discount' => 'nullable|numeric|min:0|max:100',
             'no_cutlery' => 'nullable|boolean',
             'notes' => 'nullable|string|max:255',
@@ -628,7 +629,7 @@ class GoMealController extends Controller
             ?? Pelanggan::firstOrFail();
 
         $orderType = $validated['order_type'] ?? 'delivery';
-        $paymentMethod = $validated['payment_method'] ?? 'gomeal_pay';
+        $paymentMethod = $validated['payment_method'] ?? 'qris';
         $discountPercent = (float) ($validated['coupon_discount'] ?? 0);
         $serviceFee = $orderType === 'delivery' ? self::DELIVERY_FEE : 0.0;
         $items = $validated['items'];
@@ -691,7 +692,8 @@ class GoMealController extends Controller
                 'total_belanja' => $totalBelanja,
                 'status_pesanan' => 'menunggu_kasir',
                 'tipe_pesanan' => $orderType,
-                'metode_pembayaran' => $paymentMethod,
+                'metode_pembayaran' => in_array($paymentMethod, ['qris', 'bca', 'bri', 'duitku'], true) ? 'duitku' : $paymentMethod,
+                'payment_status' => in_array($paymentMethod, ['qris', 'bca', 'bri', 'duitku'], true) ? 'pending' : 'paid',
                 'catatan' => $validated['notes'] ?? null,
             ]);
 
@@ -715,7 +717,8 @@ class GoMealController extends Controller
                 : 'Delivery';
             $methodLabel = match ($paymentMethod) {
                 'gomeal_pay' => 'GoMeal Pay',
-                'qris' => 'QRIS',
+                'qris', 'bca', 'bri' => 'Duitku Gateway',
+                'duitku' => 'Duitku Gateway',
                 default => 'Tunai',
             };
 
@@ -723,6 +726,41 @@ class GoMealController extends Controller
                 'aktivitas' => "Pesanan {$typeLabel} #{$transaksiId} oleh {$customer->nama_pelanggan} via {$methodLabel} (Rp ".number_format($totalBelanja, 0, ',', '.').')',
                 'waktu' => now(),
             ]);
+
+            if (in_array($paymentMethod, ['qris', 'bca', 'bri', 'duitku'], true)) {
+                $duitkuService = app(DuitkuService::class);
+                $orderId = 'GM-'.$transaksiId.'-'.time();
+
+                $duitkuRes = $duitkuService->createInvoice([
+                    'order_id' => $orderId,
+                    'amount' => $totalBelanja,
+                    'product_details' => "Pesanan {$typeLabel} #{$transaksiId}",
+                    'customer_name' => $customer->nama_pelanggan,
+                    'payment_method' => match ($paymentMethod) {
+                        'qris' => 'SP',
+                        'bca' => 'BC',
+                        'bri' => 'BR',
+                        default => null,
+                    },
+                    'return_url' => $request->getSchemeAndHttpHost().route('duitku.return', [], false),
+                ]);
+
+                if ($duitkuRes['success'] && ! empty($duitkuRes['payment_url'])) {
+                    DB::table('tbl_transaksi')
+                        ->where('id_transaksi', $transaksiId)
+                        ->update([
+                            'payment_status' => 'pending',
+                            'payment_reference' => $duitkuRes['reference'] ?? null,
+                            'payment_url' => $duitkuRes['payment_url'],
+                        ]);
+
+                    DB::commit();
+
+                    return Inertia::location($duitkuRes['payment_url']);
+                }
+
+                throw new \Exception('Duitku Gateway: '.($duitkuRes['message'] ?? 'Gagal membuat tagihan Duitku. Silakan cek Merchant Code & API Key di .env'));
+            }
 
             DB::commit();
 
@@ -737,20 +775,41 @@ class GoMealController extends Controller
     /**
      * Top Up GoMeal Pay wallet balance.
      */
-    public function topUp(Request $request): RedirectResponse
+    public function topUp(Request $request): mixed
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:10000|max:10000000',
             'method' => 'nullable|string|max:50',
         ]);
 
+        $formattedAmount = 'Rp '.number_format($validated['amount'], 0, ',', '.');
+        $method = $validated['method'] ?? 'Transfer Bank';
+
+        if ($method === 'Duitku Gateway') {
+            $duitkuService = app(DuitkuService::class);
+            $customer = Pelanggan::find($request->session()->get('pelanggan_id')) ?? Pelanggan::first();
+            $orderId = 'TOPUP-'.($customer ? $customer->id_pelanggan : '1').'-'.time();
+
+            $res = $duitkuService->createInvoice([
+                'order_id' => $orderId,
+                'amount' => $validated['amount'],
+                'product_details' => 'Top Up GoMeal Pay '.$formattedAmount,
+                'customer_name' => $customer ? $customer->nama_pelanggan : 'Pelanggan',
+                'return_url' => $request->getSchemeAndHttpHost().route('duitku.return', [], false),
+            ]);
+
+            if ($res['success'] && ! empty($res['payment_url'])) {
+                return redirect()->back()->with('payment_url', $res['payment_url']);
+            }
+
+            return redirect()->back()->with('error', 'Duitku Gateway: '.($res['message'] ?? 'Gagal memproses top up Duitku'));
+        }
+
         $currentBalance = (float) $request->session()->get('gomeal_balance', self::DEFAULT_WALLET_BALANCE);
         $newBalance = round($currentBalance + $validated['amount'], 2);
         $request->session()->put('gomeal_balance', $newBalance);
 
-        $formattedAmount = 'Rp '.number_format($validated['amount'], 0, ',', '.');
         $formattedBalance = 'Rp '.number_format($newBalance, 0, ',', '.');
-        $method = $validated['method'] ?? 'Transfer Bank';
 
         DB::table('tbl_log')->insert([
             'aktivitas' => "Top Up GoMeal Pay sebesar {$formattedAmount} via {$method}",

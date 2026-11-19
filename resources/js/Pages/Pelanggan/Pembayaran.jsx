@@ -2,13 +2,14 @@ import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     Wallet, PlusCircle, QrCode, Landmark, Banknote, ShieldCheck,
-    Receipt, ArrowUpRight, Clock,
+    Receipt, ArrowUpRight, Clock, X, ExternalLink,
 } from 'lucide-react';
 import PelangganLayout, { money } from './PelangganLayout';
 
 const PRESETS = [25000, 50000, 100000, 250000];
 
 const TOPUP_METHODS = [
+    { key: 'Duitku Gateway', label: 'Duitku PG', icon: Landmark },
     { key: 'Transfer Bank VA', label: 'Bank VA', icon: Landmark },
     { key: 'QRIS Instant', label: 'QRIS', icon: QrCode },
     { key: 'Tunai di Kasir', label: 'Kasir', icon: Banknote },
@@ -23,6 +24,7 @@ export default function Pembayaran({
     const [amount, setAmount] = useState(100000);
     const [method, setMethod] = useState('Transfer Bank VA');
     const [processing, setProcessing] = useState(false);
+    const [paymentUrl, setPaymentUrl] = useState(null);
 
     const handleTopUp = (e) => {
         e.preventDefault();
@@ -33,6 +35,10 @@ export default function Pembayaran({
             { amount: Number(amount), method },
             {
                 preserveScroll: true,
+                onSuccess: (page) => {
+                    const url = page.props.flash?.payment_url;
+                    if (url) setPaymentUrl(url);
+                },
                 onFinish: () => setProcessing(false),
             }
         );
@@ -47,6 +53,25 @@ export default function Pembayaran({
             walletBalance={walletBalance}
         >
             <Head title="Pembayaran" />
+
+            {paymentUrl && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center bg-ink/65 p-0 backdrop-blur-sm sm:items-center sm:p-5" onMouseDown={(event) => { if (event.target === event.currentTarget) setPaymentUrl(null); }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" className="flex h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[26px] border border-line bg-cream shadow-2xl sm:h-[min(760px,88dvh)] sm:rounded-[26px]">
+                        <header className="flex items-center justify-between gap-3 border-b border-line bg-white px-4 py-3.5 sm:px-5">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-primary-subtle text-primary-deep"><ShieldCheck className="h-5 w-5" /></span>
+                                <div className="min-w-0"><h2 id="payment-modal-title" className="font-display text-sm font-bold text-ink">Pembayaran aman</h2><p className="text-xs text-ink-soft">Selesaikan transaksi melalui Duitku</p></div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2">
+                                <a href={paymentUrl} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-ink-soft hover:bg-muted" aria-label="Buka pembayaran di tab baru"><ExternalLink className="h-4 w-4" /></a>
+                                <button type="button" onClick={() => setPaymentUrl(null)} className="rounded-lg p-2 text-ink-soft hover:bg-muted" aria-label="Tutup pembayaran"><X className="h-4 w-4" /></button>
+                            </div>
+                        </header>
+                        <iframe title="Pembayaran Duitku" src={paymentUrl} className="min-h-0 flex-1 border-0 bg-white" allow="payment *" />
+                        <footer className="border-t border-line bg-white px-4 py-2.5 text-center text-[11px] text-ink-soft">Jangan tutup jendela sebelum pembayaran selesai.</footer>
+                    </section>
+                </div>
+            )}
 
             <div className="space-y-4">
                 {/* GoMeal Pay Card */}
@@ -127,7 +152,7 @@ export default function Pembayaran({
 
                         <div>
                             <label className="text-[11px] font-semibold text-ink">Metode Top Up</label>
-                            <div className="mt-1.5 grid grid-cols-3 gap-2">
+                            <div className="mt-1.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 {TOPUP_METHODS.map(({ key, label, icon: Icon }) => (
                                     <button
                                         key={key}

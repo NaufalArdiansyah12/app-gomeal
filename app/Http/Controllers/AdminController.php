@@ -8,6 +8,7 @@ use App\Models\Pelanggan;
 use App\Models\Produk;
 use App\Models\ShiftKasir;
 use App\Models\User;
+use App\Services\DuitkuService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -524,22 +525,27 @@ class AdminController extends Controller
     {
         $role = $request->session()->get('user_role');
         $isKasir = ($role === 'kasir');
+        $testCustomerNames = ['Pelanggan Duitku Test', 'Pelanggan Duitku Checkout'];
 
         $stats = [
             'menunggu_kasir' => DB::table('tbl_transaksi')
-                ->where('tipe_pesanan', 'delivery')
+                ->whereIn('tipe_pesanan', ['delivery', 'dine_in'])
+                ->whereNotIn('id_pelanggan', DB::table('tbl_pelanggan')->select('id_pelanggan')->whereIn('nama_pelanggan', $testCustomerNames))
                 ->where('status_pesanan', 'menunggu_kasir')
                 ->count(),
             'diproses_dapur' => DB::table('tbl_transaksi')
-                ->where('tipe_pesanan', 'delivery')
+                ->whereIn('tipe_pesanan', ['delivery', 'dine_in'])
+                ->whereNotIn('id_pelanggan', DB::table('tbl_pelanggan')->select('id_pelanggan')->whereIn('nama_pelanggan', $testCustomerNames))
                 ->whereIn('status_pesanan', ['menunggu_chef', 'dimasak'])
                 ->count(),
             'siap_kasir' => DB::table('tbl_transaksi')
-                ->where('tipe_pesanan', 'delivery')
+                ->whereIn('tipe_pesanan', ['delivery', 'dine_in'])
+                ->whereNotIn('id_pelanggan', DB::table('tbl_pelanggan')->select('id_pelanggan')->whereIn('nama_pelanggan', $testCustomerNames))
                 ->where('status_pesanan', 'siap_kasir')
                 ->count(),
             'selesai_hari_ini' => DB::table('tbl_transaksi')
-                ->where('tipe_pesanan', 'delivery')
+                ->whereIn('tipe_pesanan', ['delivery', 'dine_in'])
+                ->whereNotIn('id_pelanggan', DB::table('tbl_pelanggan')->select('id_pelanggan')->whereIn('nama_pelanggan', $testCustomerNames))
                 ->whereDate('tanggal', now()->toDateString())
                 ->where('status_pesanan', 'selesai')
                 ->count(),
@@ -547,7 +553,8 @@ class AdminController extends Controller
 
         $rawOrders = DB::table('tbl_transaksi as t')
             ->join('tbl_pelanggan as p', 't.id_pelanggan', '=', 'p.id_pelanggan')
-            ->where('t.tipe_pesanan', 'delivery')
+            ->whereIn('t.tipe_pesanan', ['delivery', 'dine_in'])
+            ->whereNotIn('t.id_pelanggan', DB::table('tbl_pelanggan')->select('id_pelanggan')->whereIn('nama_pelanggan', $testCustomerNames))
             ->select([
                 't.id_transaksi',
                 't.tanggal',
@@ -659,7 +666,7 @@ class AdminController extends Controller
         return redirect()->back()->with('success', $msg);
     }
 
-    public function storeTransaksi(Request $request): RedirectResponse
+    public function storeTransaksi(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         $validated = $request->validate([
             'id_pelanggan' => 'required|integer|exists:tbl_pelanggan,id_pelanggan',
@@ -667,7 +674,7 @@ class AdminController extends Controller
             'items.*.nama_produk' => 'required|string',
             'items.*.qty' => 'required|integer|min:1',
             'diskon_persen' => 'nullable|numeric|min:0|max:100',
-            'metode_pembayaran' => 'nullable|string',
+            'metode_pembayaran' => 'required|in:Tunai,QRIS,BCA,BRI',
             'nominal_bayar' => 'nullable|numeric|min:0',
         ]);
 
@@ -709,15 +716,25 @@ class AdminController extends Controller
             $potongan = (float) ($calcDiscount->potongan ?? 0);
             $totalAkhir = round($totalSubtotal - $potongan, 2);
 
+            $metodePembayaran = $validated['metode_pembayaran'];
+            $isDuitku = $metodePembayaran !== 'Tunai';
+            $duitkuPaymentMethod = match ($metodePembayaran) {
+                'QRIS' => 'SP',
+                'BCA' => 'BC',
+                'BRI' => 'BR',
+                default => null,
+            };
+
             // Insert tbl_transaksi (fires before_insert_transaksi trigger)
             $transaksiId = DB::table('tbl_transaksi')->insertGetId([
                 'tanggal' => now()->toDateString(),
                 'id_pelanggan' => $validated['id_pelanggan'],
                 'id_user' => $request->session()->get('user_id'),
                 'total_belanja' => $totalAkhir,
-                'status_pesanan' => 'selesai',
+                'status_pesanan' => $isDuitku ? 'menunggu_chef' : 'selesai',
                 'tipe_pesanan' => 'kasir_pos',
-                'metode_pembayaran' => strtolower($validated['metode_pembayaran'] ?? 'tunai'),
+                'metode_pembayaran' => $isDuitku ? 'duitku' : 'tunai',
+                'payment_status' => $isDuitku ? 'pending' : 'paid',
                 'catatan' => 'Transaksi Langsung Kasir (POS)',
             ]);
 
@@ -731,9 +748,38 @@ class AdminController extends Controller
                 ]);
             }
 
+            if ($isDuitku) {
+                $duitkuService = app(DuitkuService::class);
+                $orderId = 'GM-'.$transaksiId.'-'.time();
+                $pelanggan = Pelanggan::find($validated['id_pelanggan']);
+
+                $duitkuRes = $duitkuService->createInvoice([
+                    'order_id' => $orderId,
+                    'amount' => $totalAkhir,
+                    'product_details' => "Transaksi POS Kasir #{$transaksiId}",
+                    'customer_name' => $pelanggan?->nama_pelanggan ?? 'Pelanggan POS',
+                    'payment_method' => $duitkuPaymentMethod,
+                    'return_url' => $request->getSchemeAndHttpHost().route('duitku.return', [], false),
+                ]);
+
+                if ($duitkuRes['success'] && ! empty($duitkuRes['payment_url'])) {
+                    DB::table('tbl_transaksi')
+                        ->where('id_transaksi', $transaksiId)
+                        ->update([
+                            'payment_reference' => $duitkuRes['reference'] ?? null,
+                            'payment_url' => $duitkuRes['payment_url'],
+                        ]);
+
+                    DB::commit();
+
+                    return Inertia::location($duitkuRes['payment_url']);
+                }
+
+                throw new \Exception('Duitku Gateway: '.($duitkuRes['message'] ?? 'Gagal membuat tagihan Duitku. Silakan periksa kredensial Duitku.'));
+            }
+
             DB::commit();
 
-            $metodePembayaran = $validated['metode_pembayaran'] ?? 'Tunai';
             $nominalBayar = (float) ($validated['nominal_bayar'] ?? $totalAkhir);
             $kembalian = max(0, round($nominalBayar - $totalAkhir, 2));
 

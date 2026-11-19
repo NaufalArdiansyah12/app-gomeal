@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useMemo } from 'react';
 import {
     Bike, Search, Star, Plus, Minus, ShoppingBag,
-    Trash2, MapPin, Tag, Utensils, Wallet, Banknote, QrCode, ArrowRight,
+    Trash2, MapPin, Tag, Utensils, Landmark, QrCode, ArrowRight,
 } from 'lucide-react';
 import PelangganLayout, { money } from './PelangganLayout';
 
@@ -22,7 +22,7 @@ export default function FoodOrderDelivery({
     const [discount, setDiscount] = useState(0);
     const [couponMsg, setCouponMsg] = useState(null);
     const [noCutlery, setNoCutlery] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState('gomeal_pay');
+    const [paymentMethod, setPaymentMethod] = useState('qris');
     const [notes, setNotes] = useState('');
     const initialAddress = typeof address === 'string'
         ? address
@@ -424,9 +424,9 @@ export default function FoodOrderDelivery({
                         {/* Payment method */}
                         <div className="mb-3 grid grid-cols-3 gap-1.5">
                             {[
-                                { key: 'gomeal_pay', label: 'GoMeal Pay', icon: Wallet },
                                 { key: 'qris', label: 'QRIS', icon: QrCode },
-                                { key: 'cod', label: 'COD', icon: Banknote },
+                                { key: 'bca', label: 'VA BCA', icon: Landmark },
+                                { key: 'bri', label: 'VA BRI', icon: Landmark },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button
                                     key={key}
